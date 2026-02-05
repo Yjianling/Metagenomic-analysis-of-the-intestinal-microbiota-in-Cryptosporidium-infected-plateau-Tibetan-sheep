@@ -1,0 +1,104 @@
+mphlanin_used1 <- read.delim("input/mphlanin_used_sheep.txt", header=TRUE, sep = "\t")
+rownames(mphlanin_used1)<-mphlanin_used1[,1]
+mphlanin_used1<-mphlanin_used1[,-1]
+sampledata<-metadatadf
+rownames(sampledata)<-sampledata[,1]
+identical(sort(rownames(sampledata)), sort(colnames(mphlanin_used1)))
+phyloseqin_count_used <- metaphlanToPhyloseq(mphlanin_used1, metadat =sampledata)
+phyloseqin.genus.count <- subset_taxa(phyloseqin_count_used,!is.na(Genus) & Genus != "" & !grepl("_unclassified", Genus) & !grepl("^GGB", Genus))#191
+phyloseqin_genus_count <- tax_glom(
+  phyloseqin.genus.count,
+  taxrank = "Genus",
+  NArm = TRUE
+)
+# phyloseqin_filt_g.tf<-filter_taxa(phyloseqin_g.tdf, function(x) sum(x>1)>=0.05*length(x),prune = TRUE)#49
+gt_otu <- as.data.frame(
+  otu_table(phyloseqin_genus_count)
+)
+
+if(!taxa_are_rows(phyloseqin_genus_count)){
+  gt_otu <- t(gt_otu)
+}
+
+# 用 Genus 替换行名
+genus_names <- as.vector(
+  tax_table(phyloseqin_genus_count)[, "Genus"]
+)
+
+rownames(gt_otu) <- paste0("G_", genus_names)
+
+head(gt_otu)
+
+library(DESeq2)
+library(ggrepel)
+sampledata <- as.data.frame(sample_data(phyloseqin_genus_count))
+otu <- as.data.frame(gt_otu)
+
+# 确保样本顺序一致
+otu <- otu[, rownames(sampledata)]
+otu <- otu[rowSums(otu > 1) >= 0.1 * ncol(otu), ]
+sampledata$age <- factor(sampledata$age, levels = c("adult","lamb")) 
+# 可选过滤
+#otu <- otu[rowSums(otu) > 10, ]
+
+# 建模
+dds <- DESeqDataSetFromMatrix(
+  countData = otu,
+  colData = sampledata,
+  design = ~ class+ age
+)
+dds <- dds[rowSums(counts(dds)) > 0, ]
+# 核心参数！
+dds <- DESeq(dds, sfType = "poscounts")
+
+res <- results(dds)
+res <- results(dds, alpha=0.05, lfcThreshold=1)  # 设定显著性阈值
+res_df <- as.data.frame(res)
+res_df$gene_id <- rownames(res_df)
+
+# 添加分组标记：显著上调/下调/无差异
+res_df$Type <- case_when(
+  res_df$padj < 0.05 & res_df$log2FoldChange > 2 ~ "Up",
+  res_df$padj < 0.05 & res_df$log2FoldChange < -2 ~ "Down",
+  TRUE ~ "Normal"
+)
+top_taxa <- res_df[order(res_df$padj), ][1:15, ]
+write.xlsx(res_df, "deseq2_sheep_Genus.xlsx")
+
+ggplot(res_df, aes(x = log2FoldChange, y = -log10(padj), color = Type)) +
+  geom_hline(yintercept = -log10(0.01),
+             linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = 2,
+             linetype = "dashed", color = "grey40") +
+  geom_vline(xintercept = -2,
+             linetype = "dashed", color = "grey40") +
+  geom_point(size = 3, alpha = 0.7) +
+  scale_color_manual(
+    values = c("#704587", "#bbbbbb", "#0c510e")
+  ) +
+  labs(x = "Log2FoldChange", y = "-lg(FDR)", color = "Type") +
+  #scale_x_continuous(breaks = seq(-5, 5, 1)) +
+  #scale_y_continuous(breaks = seq(0, 10, 1)) +
+  theme_bw() +
+  theme(
+    panel.grid.minor = element_blank(),
+    panel.grid.major = element_blank()
+  ) +
+geom_text_repel(
+  data = res_df %>% 
+    filter(Type %in% c("Up", "Down")) %>% 
+    filter(padj < 0.05) %>% 
+    arrange(padj) %>% 
+    head(10),
+  aes(label = gene_id),
+  size = 3,
+  box.padding = 0.6,     # 标签之间的距离
+  point.padding = 0.4,  # 标签和点之间的距离
+  force = 2,            # 推开力度（核心参数）
+  max.overlaps = Inf,  # 强制全部显示（否则默认会隐藏）
+  segment.color = "grey60",
+  segment.size = 0.3,
+  min.segment.length = 0
+)
+library(ggplot2)
+ggsave("deseq2_sheep-class.pdf", width =8, height = 6, dpi = 300)

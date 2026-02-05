@@ -1,0 +1,143 @@
+#载虫量箱线图
+sha_sim <- data_alpha[1:30,]
+sha_sim <- sha_sim[,-c(4,5)]
+metadatadf_p$weight <- as.numeric(metadatadf_p$weight)
+metadatadf_p$parasite_load <- as.numeric(metadatadf_p$parasite_load)
+metadatadf_p$log_parasite_load <- log(metadatadf_p$parasite_load)
+metadatadf_p <- cbind(metadatadf_p,sha_sim)
+ggplot(metadatadf_p,aes(x = sex, y =log_parasite_load,color = sex,fill = sex))+
+  geom_boxplot(aes(color=sex,fill =sex,alpha = 0.1),outlier.shape = NA)+
+  geom_jitter(shape=16,alpha=1, size=3,position=position_jitter(0.1))+
+  ylab("log parasite load")+xlab("")+
+ scale_fill_manual(values = color5)+
+  scale_color_manual(values =color5)+
+  theme_bw()+
+  theme(panel.grid = element_blank(), 
+        legend.position = "none",
+        axis.text.x = element_text(angle = 0, vjust = 0.5, hjust = 0.5),
+        plot.title = element_text(hjust = 0.5, size = 15),
+        text = element_text())+
+  stat_compare_means(method="wilcox.test",comparisons =list(c("female","male")),label = "p.label")
+ggsave("sex与载虫量log.pdf",width =4,height =5)
+ggplot(metadatadf_p,aes(age, as.numeric(log_parasite_load), color = age,shape = age))+
+  geom_boxplot(aes(color= age,fill = age,alpha = 0.1),outlier.shape = NA)+
+  geom_jitter(shape=16,alpha=1, size=3,position=position_jitter(0.1))+
+  ylab("log parasite load")+xlab("")+
+ scale_fill_manual(values = color5)+
+  scale_color_manual(values =color5)+
+  theme_bw()+
+  theme(panel.grid = element_blank(), 
+        legend.position = "none",
+        axis.text.x = element_text(angle = 0, vjust = 0.5, hjust = 0.5),
+        plot.title = element_text(hjust = 0.5, size = 15),
+        text = element_text())+
+  stat_compare_means(method="wilcox.test",comparisons =list(c("adult","lamb")),label = "p.label")
+ggsave("age与载虫量log.pdf",width = 4,height =5)
+library(ggpmisc)
+metadatadf_p$weight <- as.numeric(metadatadf_p$weight)
+cor.test(metadatadf_p$weight, metadatadf_p$log.parasite.load, method = "spearman")
+ggplot(metadatadf_p, aes(x =weight, y =log_parasite_load)) +
+  geom_point( colour = "#143f69",size = 3, alpha = 0.8,na.rm = T) +
+  geom_smooth(method = 'lm', formula = y ~ x, se = TRUE, level = 0.95, fill = "#bbb",color="#741119",na.rm = T) + 
+  # ↑ se=TRUE 启用置信区间；level=0.5 减少面积范围；color=NA 不显示拟合线
+  stat_poly_eq(
+    aes(x =weight,y=log_parasite_load,
+        label = paste(after_stat(eq.label),   # 回归方程
+                     after_stat(rr.label),    # R平方 
+                     after_stat(p.value.label),   # P值 
+                     sep = "~~~")),  # 用三个波浪线分隔 
+    formula = y ~ x, parse = TRUE,  # 解析为数学表达式
+    na.rm = T,label.x = "right",  # 标签位置 
+    label.y = "top",size = 4  # 字体大小 
+    ) +
+  #scale_color_manual(values = c("#669933","#663399","#339966","#996699")) +#,
+  labs( y = "log parasite load") +
+  #ylim(0.7,1.1)+
+  theme_bw(base_size = 15)+
+  theme(text = element_text(face = "bold"),
+    panel.background = element_blank(),         # 去除背景
+    panel.grid.major = element_blank(),         # 去除主网格线
+    panel.grid.minor = element_blank(),         # 去除次网格线
+    panel.border = element_rect(color = "black", fill = NA,linewidth =1.5), # 显示外边框
+    strip.background = element_blank()
+    # legend.position = "none"  # 如需要隐藏图例可启用
+  )
+ggsave("体重与载虫量log2.pdf",width =5,height =4)
+cor.test(metadatadf_p$log_parasite_load, metadatadf_p$shannon, method = "spearman")
+ggplot(metadatadf_p, aes(x =log_parasite_load, y =shannon)) +
+  geom_point( colour = "#143f69",size = 3, alpha = 0.8,na.rm = T) +
+  geom_smooth(method = 'lm', formula = y ~ x, se = TRUE, level = 0.95, fill = "#bbb",color="#741119",na.rm = T) + 
+  stat_poly_eq(
+    aes(x =log_parasite_load,y=shannon,
+        label = paste(after_stat(eq.label),after_stat(rr.label),after_stat(p.value.label),sep = "~~~")),
+    formula = y ~ x, parse = TRUE,na.rm = T,label.x = "right",label.y = "top",size = 4 ) +
+  labs( y = "Shannon index") +
+  theme_bw(base_size = 15)+
+  theme(text = element_text(face = "bold"),
+    panel.background = element_blank(),
+    panel.grid.major = element_blank(),
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA,linewidth =1.5), 
+    strip.background = element_blank()
+    # legend.position = "none" 
+  )
+ggsave("shannon与载虫量log.pdf",width =5,height =4)
+cor.test(metadatadf_p$log_parasite_load, metadatadf_p$simpson, method = "spearman")
+ggplot(metadatadf_p, aes(x =log_parasite_load, y =simpson)) +
+  geom_point( colour = "#143f69",size = 3, alpha = 0.8,na.rm = T) +
+  geom_smooth(method = 'lm', formula = y ~ x, se = TRUE, level = 0.95, fill = "#bbb",color="#741119",na.rm = T) + 
+  # ↑ se=TRUE 启用置信区间；level=0.5 减少面积范围；color=NA 不显示拟合线
+  stat_poly_eq(
+    aes(x =log_parasite_load,y=simpson,
+       label = paste(after_stat(eq.label),after_stat(rr.label),after_stat(p.value.label),sep = "~~~")),formula = y ~ x, parse = TRUE,na.rm = T,label.x = "right",label.y = "top",size = 4 ) +
+  labs( y = "Simpson index") +
+  theme_bw(base_size = 15)+
+  theme(text = element_text(face = "bold"),
+    panel.background = element_blank(),
+    panel.grid.major = element_blank(), 
+    panel.grid.minor = element_blank(),
+    panel.border = element_rect(color = "black", fill = NA,linewidth =1.5), # 显示外边框
+    strip.background = element_blank()
+    # legend.position = "none"  # 如需要隐藏图例可启用
+  )
+ggsave("simpson与载虫量log.pdf",width =5,height =4)
+#-----------
+##Effector_parasite_load
+#-----------
+phyloseqin_p <- subset_samples(phyloseqin_pca_f, class %in% c("positive"))
+data <- as.data.frame(t(phyloseqin_p@otu_table))
+all(row.names(data) ==phyloseqin_p@sam_data$ID)
+res <- prcomp(data, scale = T)
+data_dist = as.matrix(vegdist(data, method = 'bray'))
+res_adonis_all = adonis2(data_dist~parasite_load + age + sex + weight,metadatadf_p,by = "term",permutations = 999)
+
+res_adonis_all$item <- row.names(res_adonis_all)
+tmp_adonis_result_dis_p <- res_adonis_all[!is.na(res_adonis_all$F),]
+tmp_adonis_result_dis_p$item <- factor(tmp_adonis_result_dis_p$item,levels = tmp_adonis_result_dis_p$item)
+tmp_adonis_result_dis_p$class <- ifelse(tmp_adonis_result_dis_p$`Pr(>F)`>0.05,"no_sig","sig")
+tmp_adonis_result_dis_p <- tmp_adonis_result_dis_p%>%
+  mutate(
+    p_sig = symnum(`Pr(>F)`,
+      cutpoints = c(0, 0.0001, 0.001, 0.01, 0.05,1),
+      symbols = c("****", "***", "**", "*",""),
+      na = "ns"  
+    ) %>% as.character()   
+  )
+tmp_adonis_result_dis_p <- tmp_adonis_result_dis_p[order(-tmp_adonis_result_dis_p$R2), ]
+tmp_adonis_result_dis_p$item <- factor(tmp_adonis_result_dis_p$item,levels = tmp_adonis_result_dis_p$item)
+pa <- ggplot(tmp_adonis_result_dis_p)+
+  geom_bar(aes(x = item, y = R2,fill = class),stat = "identity",width = 0.6)+
+  geom_text(aes(x = item, y = R2+0.002,label=p_sig,size = 2,fontface = "bold",angle = 270,vjust =0))+
+  theme_cowplot()+
+  scale_fill_manual(values = color4)+
+  labs(x = "Effector",y = "R2") +
+  coord_flip()+
+  theme_bw() +
+  theme(legend.position = "none", #移除图例
+        axis.title  = element_text(size = 14,face = "bold"),
+        panel.grid.minor = element_blank(),
+        panel.grid.major = element_blank(),
+        text = element_text( hjust =0.5,vjust = 0.5,face = "bold"),
+        axis.ticks.x = element_blank(),
+       axis.text  = element_text( hjust =0.5,size =12 ,vjust = 0.5),axis.text.y =element_text( angle =90,size =12,vjust =1.5,hjust = 0.5))
+ggsave(plot = pa,filename = "adonis_parasite_load.pdf",width =6,height = 5)
